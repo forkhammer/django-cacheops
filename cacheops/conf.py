@@ -18,6 +18,8 @@ class Defaults:
     CACHEOPS_LRU = False
     CACHEOPS_CLIENT_CLASS = None
     CACHEOPS_DEGRADE_ON_FAILURE = False
+    CACHEOPS_DEGRADE_TIMEOUT = None
+    CACHEOPS_DEGRADE_FAILS = None
     CACHEOPS_SENTINEL = {}
     # NOTE: we don't use this fields in invalidator conditions since their values could be very long
     #       and one should not filter by their equality anyway.

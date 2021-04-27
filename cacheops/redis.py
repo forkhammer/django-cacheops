@@ -4,11 +4,10 @@ from contextlib import contextmanager
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.module_loading import import_string
 
-from funcy import decorator, identity, memoize, omit, LazyObject
+from funcy import decorator, compose, identity, limit_error_rate, memoize, ErrorRateExceeded, LazyObject
 import redis
 from redis.sentinel import Sentinel
 from .conf import settings
-
 
 if settings.CACHEOPS_DEGRADE_ON_FAILURE:
     @decorator
@@ -19,6 +18,17 @@ if settings.CACHEOPS_DEGRADE_ON_FAILURE:
             warnings.warn("The cacheops cache is unreachable! Error: %s" % e, RuntimeWarning)
         except redis.TimeoutError as e:
             warnings.warn("The cacheops cache timed out! Error: %s" % e, RuntimeWarning)
+        except ErrorRateExceeded:
+            warnings.warn("The cacheops exceeded number or connection errors,"
+                          " not trying for %d seconds" % settings.CACHEOPS_DEGRADE_TIMEOUT,
+                          RuntimeWarning)
+
+
+    if settings.CACHEOPS_DEGRADE_FAILS and settings.CACHEOPS_DEGRADE_TIMEOUT:
+        handle_connection_failure = compose(
+            handle_connection_failure,
+            limit_error_rate(settings.CACHEOPS_DEGRADE_FAILS, settings.CACHEOPS_DEGRADE_TIMEOUT)
+        )
 else:
     handle_connection_failure = identity
 
